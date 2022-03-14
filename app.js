@@ -3,13 +3,12 @@ const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
 const ejs = require('ejs');
-// mongoose-encryption encrypt when db.save and decrypt when db.find
-const encrypt = require("mongoose-encryption");
+const bcrypt = require('bcrypt');
+const saultRound = 10;
 
 
 const app = express();
 
-console.log(process.env.API_KEY)
 const Port = 3000;
 
 app.set('view engine', 'ejs');
@@ -25,8 +24,6 @@ const userSchema = new mongoose.Schema({
     password: String
 });
 
-
-userSchema.plugin(encrypt,{secret: process.env.SECRET, encryptedFields:["password"]})
 
 
 const User = new mongoose.model("User", userSchema)
@@ -47,9 +44,11 @@ app.get('/register',(req,res)=>{
 });
 
 app.post("/register",(req,res)=>{
-    const newUser = new User({
+
+    bcrypt.hash(req.body.password, saultRound, function(err, hash) {
+        const newUser = new User({
             email: req.body.username,
-            password: req.body.password
+            password: hash
         });
 
         newUser.save((err)=>{
@@ -59,6 +58,9 @@ app.post("/register",(req,res)=>{
                 res.render("secrets")
             }
         })
+    });
+
+    
         
 });
 
@@ -72,10 +74,12 @@ app.post("/login",(req,res)=>{
         } else {
             if(foundUser){
                 console.log(foundUser)
-                if(foundUser.password === password){
-                    console.log("password correct")
-                    res.render('secrets')
-                }
+                bcrypt.compare(password, foundUser.password, function(err, result) {
+                   if( result == true){
+                       res.render('secrets')
+                   }
+                    
+                });
 
             }
         }
